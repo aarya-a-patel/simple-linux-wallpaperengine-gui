@@ -1,12 +1,17 @@
 # Simple Linux Wallpaper Engine GUI
 
-A modern, universal GUI for [linux-wallpaperengine](https://github.com/Almamu/linux-wallpaperengine).  
-Works on **Debian, Ubuntu, Fedora, Arch**, and compatible with **Steam Native, Flatpak, and Snap**.
+A modern, universal GUI for [linux-wallpaperengine](https://github.com/Almamu/linux-wallpaperengine).
 
-![Screenshot](https://via.placeholder.com/800x450.png?text=Modern+MacOS-like+Dark+UI)
+## Screenshots
+<p align="center">
+  <img src="screenshots/screenshot-2025-12-21_17-56-09.png" width="45%" />
+  <img src="screenshots/screenshot-2025-12-21_17-56-23.png" width="45%" />
+</p>
+<p align="center">
+  <img src="screenshots/screenshot-2025-12-21_17-56-33.png" width="90%" />
+</p>
 
 ## 1. Prerequisites (The Backend)
-
 This is just a GUI. You **must** install the core backend engine first.
 
 ### Arch / Manjaro
@@ -50,11 +55,6 @@ Start the application:
 ./run_gui.sh
 ```
 
-### Features
-* **Universal Steam Detection:** Automatically finds wallpapers in Native, Flatpak, and Snap Steam installations.
-* **System Tray:** Minimize to tray; right-click icon to show/exit.
-* **Multi-Monitor:** Select specific screens for different wallpapers.
-* **Audio Control:** Mute, volume slider, and auto-mute when other apps play audio.
 
 ## Troubleshooting
 

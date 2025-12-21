@@ -41,7 +41,7 @@ QSlider::handle:horizontal { background: #FFFFFF; border: 1px solid #5c5c5c; wid
 QListWidget#WallpaperList { background-color: #1E1E1E; border: 1px solid #3A3A3A; border-radius: 8px; outline: none; }
 QListWidget#WallpaperList::item { padding: 8px; border-bottom: 1px solid #2D2D2D; color: #FFFFFF; }
 QListWidget#WallpaperList::item:selected { background-color: #0A84FF; color: white; border-radius: 4px; }
-QLabel#PreviewBox { background-color: #1E1E1E; border: 1px solid #3A3A3A; border-radius: 8px; color: #666666; }
+QLabel#PreviewBox { background-color: #1E1E1E; border: 1px solid #3A3A3A; border-radius: 16px; color: #666666; }
 """
 
 MACOS_LIGHT = """
@@ -71,7 +71,7 @@ QSlider::handle:horizontal { background: #FFFFFF; border: 1px solid #D1D1D6; wid
 QListWidget#WallpaperList { background-color: #FFFFFF; border: 1px solid #E5E5E5; border-radius: 8px; outline: none; }
 QListWidget#WallpaperList::item { padding: 8px; border-bottom: 1px solid #F2F2F7; color: #000000; }
 QListWidget#WallpaperList::item:selected { background-color: #007AFF; color: white; border-radius: 4px; }
-QLabel#PreviewBox { background-color: #F2F2F7; border: 1px solid #E5E5E5; border-radius: 8px; color: #999999; }
+QLabel#PreviewBox { background-color: #F2F2F7; border: 1px solid #E5E5E5; border-radius: 16px; color: #999999; }
 """
 
 class Worker(QObject):
@@ -248,8 +248,8 @@ class WallpaperApp(QMainWindow):
         self.lbl_preview = QLabel("Preview")
         self.lbl_preview.setObjectName("PreviewBox")
         self.lbl_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_preview.setMinimumSize(320, 240)
-        right_layout.addWidget(self.lbl_preview, 1)
+        self.lbl_preview.setFixedSize(480, 360)
+        right_layout.addWidget(self.lbl_preview, 1, Qt.AlignmentFlag.AlignCenter)
         splitter.addWidget(right_container, 1)
 
     def setup_settings_page(self):
@@ -440,16 +440,33 @@ class WallpaperApp(QMainWindow):
     def on_wallpaper_selected(self, item):
         data = item.data(Qt.ItemDataRole.UserRole)
         self.wp_id_input.setText(data["id"])
-        self.lbl_preview.setText(self._("preview_loading"))
+        
+        self.lbl_preview.setGraphicsEffect(None)
+        
         if data.get("preview"):
             path = os.path.join(data["path"], data["preview"])
             if os.path.isfile(path):
                 pixmap = QPixmap(path)
-                scaled = pixmap.scaled(self.lbl_preview.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                scaled = pixmap.scaled(QSize(480, 360), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
                 self.lbl_preview.setPixmap(scaled)
+                self.lbl_preview.setFixedSize(scaled.size())
+                
+                try:
+                    img = scaled.toImage()
+                    small = img.scaled(1, 1, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                    avg_color = small.pixelColor(0, 0)
+                    
+                    effect = QGraphicsDropShadowEffect()
+                    effect.setBlurRadius(120)
+                    effect.setColor(avg_color)
+                    effect.setOffset(0, 0)
+                    self.lbl_preview.setGraphicsEffect(effect)
+                except: pass
             else:
+                self.lbl_preview.setFixedSize(480, 360)
                 self.lbl_preview.setText(self._("preview_file_not_found"))
         else:
+            self.lbl_preview.setFixedSize(480, 360)
             self.lbl_preview.setText(self._("preview_not_specified"))
 
     def run_wallpaper(self):
