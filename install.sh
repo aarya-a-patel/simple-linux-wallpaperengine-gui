@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Function to detect the OS and install system dependencies
+
 install_system_deps() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
@@ -38,10 +38,10 @@ echo "---------------------------------------"
 echo " Simple Linux WallpaperEngine GUI Setup"
 echo "---------------------------------------"
 
-# 1. Install System Dependencies
+
 install_system_deps
 
-# 2. Check for linux-wallpaperengine backend
+
 if ! command -v linux-wallpaperengine &> /dev/null; then
     echo "Warning: 'linux-wallpaperengine' backend not found in PATH."
     echo "This GUI requires the backend to function."
@@ -49,7 +49,7 @@ if ! command -v linux-wallpaperengine &> /dev/null; then
     sleep 2
 fi
 
-# 3. Setup Python Environment
+
 echo "Setting up Python virtual environment..."
 
 if [ -d ".venv" ]; then
@@ -64,7 +64,7 @@ fi
 
 source .venv/bin/activate
 
-# 4. Install Python Requirements
+
 echo "Installing Python libraries..."
 pip install --upgrade pip
 pip install -r requirements.txt
