@@ -5,8 +5,8 @@ A modern, universal GUI for [linux-wallpaperengine](https://github.com/Almamu/li
 ## Screenshots
 <p align="center">
   <img width="2560" height="1440" alt="Pasted image" src="https://github.com/user-attachments/assets/b2c28e96-53d7-4b95-951f-d17418326ded" />
-  <img src="screenshots/screenshot-2025-12-21_17-56-23.png" width="45%" />
-</p>
+<img width="2560" height="1439" alt="Pasted image (2)" src="https://github.com/user-attachments/assets/0d16a705-bc6d-4b7b-8d69-2bc35b0fb6d7" />
+
 <p align="center">
   <img src="screenshots/screenshot-2025-12-21_17-56-33.png" width="90%" />
 </p>
