@@ -18,8 +18,9 @@ LOCALE_DIR = "locales"
 MACOS_DARK = """
 QMainWindow { background-color: #1E1E1E; }
 QWidget { color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Helvetica, sans-serif; font-size: 13px; }
-QListWidget#Sidebar { background-color: #262626; border: none; outline: none; font-size: 13px; font-weight: 500; }
-QListWidget#Sidebar::item { height: 32px; padding-left: 10px; margin: 2px 10px; border-radius: 6px; color: #9A9A9A; }
+#NavContainer { background-color: #262626; border-bottom: 1px solid #3A3A3A; }
+QListWidget#Sidebar { background-color: transparent; border: none; outline: none; font-size: 13px; font-weight: 500; }
+QListWidget#Sidebar::item { height: 32px; padding: 0 15px; margin: 9px 5px; border-radius: 6px; color: #9A9A9A; }
 QListWidget#Sidebar::item:selected { background-color: #3A3A3A; color: #FFFFFF; }
 QListWidget#Sidebar::item:hover:!selected { background-color: #2F2F2F; color: #FFFFFF; }
 QFrame.Card { background-color: #2D2D2D; border: 1px solid #3A3A3A; border-radius: 10px; }
@@ -40,10 +41,16 @@ QCheckBox::indicator { width: 16px; height: 16px; border-radius: 4px; border: 1p
 QCheckBox::indicator:checked { background: #0A84FF; border-color: #0A84FF; }
 QSlider::groove:horizontal { border: 1px solid #3A3A3A; height: 4px; background: #3A3A3A; margin: 2px 0; border-radius: 2px; }
 QSlider::handle:horizontal { background: #FFFFFF; border: 1px solid #5c5c5c; width: 18px; height: 18px; margin: -8px 0; border-radius: 9px; }
-QListWidget#WallpaperGrid { background-color: transparent; border: none; outline: none; padding: 20px 20px 20px 80px; }
+QListWidget#WallpaperGrid { background-color: transparent; border: none; outline: none; padding: 20px 20px 20px 100px; }
 QListWidget#WallpaperGrid::item { background-color: #2D2D2D; border: 1px solid #3A3A3A; border-radius: 12px; margin: 15px; color: #FFFFFF; padding: 5px; }
 QListWidget#WallpaperGrid::item:selected { background-color: #3A3A3A; border: 2px solid #0A84FF; color: #FFFFFF; }
 QListWidget#WallpaperGrid::item:hover { background-color: #353535; border: 1px solid #4A4A4A; }
+QScrollBar:vertical { border: none; background: transparent; width: 10px; margin: 0px; }
+QScrollBar::handle:vertical { background: rgba(255, 255, 255, 0.1); min-height: 40px; border-radius: 5px; margin: 2px; }
+QScrollBar::handle:vertical:hover { background: rgba(255, 255, 255, 0.2); }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; background: none; }
+QScrollBar::up-arrow:vertical, QScrollBar::down-arrow:vertical { background: none; }
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }
 QLabel#PreviewBox { background-color: #1E1E1E; border: 1px solid #3A3A3A; border-radius: 16px; color: #666666; }
 """
 
@@ -155,15 +162,32 @@ class WallpaperApp(QMainWindow):
     def setup_ui(self):
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
-        main_layout = QHBoxLayout(main_widget)
+        main_layout = QVBoxLayout(main_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
-        self.sidebar = QListWidget()
-        self.sidebar.setObjectName("Sidebar")
-        self.sidebar.setFixedWidth(240)
-        self.sidebar.addItems(["Control", "Library"])
-        self.sidebar.currentRowChanged.connect(self.switch_page)
-        main_layout.addWidget(self.sidebar)
+        
+        self.nav_container = QFrame()
+        self.nav_container.setObjectName("NavContainer")
+        self.nav_container.setFixedHeight(50)
+        nav_layout = QHBoxLayout(self.nav_container)
+        nav_layout.setContentsMargins(0, 0, 0, 0)
+        nav_layout.setSpacing(0)
+
+        self.nav_bar = QListWidget()
+        self.nav_bar.setObjectName("Sidebar")
+        self.nav_bar.setFlow(QListWidget.Flow.LeftToRight)
+        self.nav_bar.setFixedWidth(260) # Fits two items comfortably
+        self.nav_bar.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.nav_bar.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.nav_bar.addItems(["Control", "Library"])
+        self.nav_bar.currentRowChanged.connect(self.switch_page)
+        
+        nav_layout.addStretch()
+        nav_layout.addWidget(self.nav_bar)
+        nav_layout.addStretch()
+        
+        main_layout.addWidget(self.nav_container)
+        
         self.stack = QStackedWidget()
         main_layout.addWidget(self.stack)
         self.page_control = QWidget()
@@ -333,7 +357,7 @@ class WallpaperApp(QMainWindow):
     def update_texts(self):
         items = ["control_tab", "local_library_tab"]
         for i, key in enumerate(items):
-            self.sidebar.item(i).setText(self._(key))
+            self.nav_bar.item(i).setText(self._(key))
         
         for widget, key in self.translatable_labels:
             widget.setText(self._(key))
