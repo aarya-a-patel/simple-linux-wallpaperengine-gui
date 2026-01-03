@@ -3,9 +3,10 @@
 A modern, universal GUI for [linux-wallpaperengine](https://github.com/Almamu/linux-wallpaperengine).
 
 ## Screenshots
-<p align="center">
-  <img width="2560" height="1440" alt="Pasted image" src="https://github.com/user-attachments/assets/b2c28e96-53d7-4b95-951f-d17418326ded" />
-<img width="2560" height="1439" alt="Pasted image (2)" src="https://github.com/user-attachments/assets/0d16a705-bc6d-4b7b-8d69-2bc35b0fb6d7" />
+<img width="2560" height="1440" alt="Pasted image" src="https://github.com/user-attachments/assets/15c6dc78-f51b-4c1b-aeb1-f2bad88bc898" />
+<img width="2560" height="1440" alt="Pasted image (2)" src="https://github.com/user-attachments/assets/d36990b8-641a-44fe-b4ff-ca582d9494da" />
+
+
 
 ## 1. Prerequisites (The Backend)
 This is just a GUI. You **must** install the core backend engine first.
