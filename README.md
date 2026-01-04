@@ -1,7 +1,7 @@
 # Simple Linux Wallpaper Engine GUI
 
 A modern, universal GUI for [linux-wallpaperengine](https://github.com/Almamu/linux-wallpaperengine).
-<font color="red">!!I encountered various problems on GNOME and KDE. I recommend using Linux Wallpaper Engine on tiling window managers such as i3, hyprland, and bspwm!!</font> For KDE, I recommend trying this [plugin](https://github.com/catsout/wallpaper-engine-kde-plugin#build-and-install)
+I encountered various problems on GNOME and KDE. I recommend using Linux Wallpaper Engine on tiling window managers such as i3, hyprland, and bspwm. </font> For KDE, I recommend trying this [plugin](https://github.com/catsout/wallpaper-engine-kde-plugin#build-and-install)
 
 
 ## Screenshots
