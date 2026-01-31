@@ -16,7 +16,8 @@ install_system_deps() {
         ubuntu|debian|pop|linuxmint|kali)
             echo "Installing dependencies for Debian/Ubuntu based systems..."
             sudo apt update
-            sudo apt install -y python3 python3-venv python3-pip git
+            # Added libxcb-cursor-dev per troubleshooting reports (fixes Qt xcb load error on Mint 22.3+)
+            sudo apt install -y python3 python3-venv python3-pip git libxcb-cursor-dev
             ;;
         fedora|rhel|centos)
             echo "Installing dependencies for Fedora based systems..."
@@ -44,8 +45,17 @@ install_system_deps
 
 if ! command -v linux-wallpaperengine &> /dev/null; then
     echo "Warning: 'linux-wallpaperengine' backend not found in PATH."
-    echo "This GUI requires the backend to function."
-    echo "Please check the README.md for installation instructions."
+    
+    # Check if it exists in the common /opt location mentioned in troubleshooting
+    if [ -f "/opt/linux-wallpaperengine/linux-wallpaperengine" ] || [ -f "/opt/linux-wallpaperengine/bin/linux-wallpaperengine" ]; then
+        echo "Found linux-wallpaperengine in /opt/linux-wallpaperengine, but it is not in your PATH."
+        echo "You can temporarily fix this by running:"
+        echo "  export PATH=\$PATH:/opt/linux-wallpaperengine"
+        echo "Or add it to your ~/.profile for a permanent fix."
+    else
+        echo "This GUI requires the backend to function."
+        echo "Please check the README.md for installation instructions."
+    fi
     sleep 2
 fi
 
