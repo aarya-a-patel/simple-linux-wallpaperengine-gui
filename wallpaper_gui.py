@@ -260,9 +260,13 @@ class WallpaperApp(QMainWindow):
         card_adv = self.create_card(layout, "adv_frame")
         self.combo_scaling = QComboBox()
         self.combo_scaling.addItems(['default', 'stretch', 'fit', 'fill'])
+        if "scale" in self.config:
+            self.combo_scaling.setCurrentText(self.config["scale"])
         self.combo_scaling.currentTextChanged.connect(self.run_wallpaper)
         self.combo_clamp = QComboBox()
         self.combo_clamp.addItems(['clamp', 'border', 'repeat'])
+        if "clamp" in self.config:
+            self.combo_clamp.setCurrentText(self.config["clamp"])
         self.combo_clamp.currentTextChanged.connect(self.run_wallpaper)
         self.chk_windowed_mode = QCheckBox("windowed_mode_checkbox")
         self.chk_windowed_mode.clicked.connect(self.run_wallpaper)
@@ -874,8 +878,10 @@ class WallpaperApp(QMainWindow):
         if self.chk_parallax.isChecked(): cmd.append('--disable-parallax')
         if self.chk_fs_pause.isChecked(): cmd.append('--no-fullscreen-pause')
         scale = self.combo_scaling.currentText()
+        self.config["scale"] = scale
         if scale != 'default': cmd.extend(['--scaling', scale])
         clamp = self.combo_clamp.currentText()
+        self.config["clamp"] = clamp
         if clamp != 'clamp': cmd.extend(['--clamp', clamp])
         if hasattr(self, "properties_data"):
             for name, data in self.properties_data.items():
@@ -1025,5 +1031,8 @@ if __name__ == "__main__":
     app.setQuitOnLastWindowClosed(False)
     app.setStyle("Fusion")
     window = WallpaperApp()
-    window.show()
+    for a in sys.argv:
+        print(a)
+    if "--background" not in sys.argv:
+        window.show()
     sys.exit(app.exec())
