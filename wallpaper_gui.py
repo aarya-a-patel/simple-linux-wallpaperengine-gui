@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import sys
 import os
 import glob
@@ -14,7 +16,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
 from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal, QObject, QTimer, QRect, QPropertyAnimation, QEasingCurve, QVariant
 from PyQt6.QtGui import QIcon, QPixmap, QImage, QAction, QColor, QPainter
 
-CONFIG_FILE = pathlib.Path(os.env(XDG_CONFIG_HOME)) / "linux-wallpaperengine-gui" / "wpe_gui_config.json"
+CONFIG_FILE = pathlib.Path(os.getenv(XDG_CONFIG_HOME)) / "linux-wallpaperengine-gui" / "wpe_gui_config.json"
 LOCALE_DIR = (pathlib.Path(__file__).parent / "locales").absolute()
 
 MACOS_DARK = """
