@@ -936,9 +936,11 @@ class WallpaperApp(QMainWindow):
     def load_config_data(self):
         self.config = {}
         if os.path.exists(CONFIG_FILE):
+            logging.info("Attempting to read config from: %s", CONFIG_FILE)
             try:
                 with open(CONFIG_FILE, 'r') as f: self.config = json.load(f)
-            except: pass
+            except e:
+                logging.info("Failed to open config with error %s", e)
         if "properties_by_wallpaper" not in self.config:
             self.config["properties_by_wallpaper"] = {}
 
@@ -1011,7 +1013,6 @@ class WallpaperApp(QMainWindow):
         QApplication.quit()
 
 if __name__ == "__main__":
-
     logging.basicConfig(format='[%(asctime)s] [%(levelname)s]:  %(message)s')
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
