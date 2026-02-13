@@ -5,6 +5,9 @@ import json
 import subprocess
 import shutil
 import re
+import time
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QPushButton, QLabel, QLineEdit, QCheckBox, QSlider, QComboBox, 
                              QStackedWidget, QListWidget, QListWidgetItem, QSystemTrayIcon, 
@@ -140,6 +143,70 @@ class WallpaperDelegate(QStyledItemDelegate):
         super().paint(painter, option, index)
         painter.restore()
 
+class WallpaperChangeHandler(FileSystemEventHandler):
+    def __init__(self, signal):
+        self.signal = signal
+
+    def on_any_event(self, event):
+        if event.is_directory:
+            return
+        # Trigger update on file changes (creation, deletion, modification)
+        self.signal.emit()
+
+class LibraryWatcher(QObject):
+    # Signal to notify the app that the library needs refreshing (debounced)
+    library_changed = pyqtSignal()
+    # Internal signal from worker thread
+    _raw_change = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+        self.observer = Observer()
+        self.handler = WallpaperChangeHandler(self._raw_change)
+        self.watched_paths = set()
+        
+        # Debounce timer
+        self.timer = QTimer()
+        self.timer.setSingleShot(True)
+        self.timer.setInterval(2000)  # Wait 2 seconds after last event
+        self.timer.timeout.connect(self.library_changed.emit)
+        
+        self._raw_change.connect(self.on_raw_change)
+
+    def on_raw_change(self):
+        # Restart timer to debounce
+        self.timer.start()
+
+    def update_watches(self, directories):
+        # efficiently update watches
+        new_paths = set(directories)
+        if new_paths == self.watched_paths:
+            return
+
+        if self.observer.is_alive():
+            self.observer.stop()
+            self.observer.join()
+        
+        self.observer = Observer()
+        self.watched_paths = new_paths
+        
+        for d in directories:
+            if os.path.isdir(d):
+                try:
+                    self.observer.schedule(self.handler, d, recursive=True)
+                except Exception as e:
+                    print(f"Failed to watch {d}: {e}")
+        
+        try:
+            self.observer.start()
+        except Exception as e:
+            print(f"Failed to start observer: {e}")
+
+    def stop(self):
+        if self.observer.is_alive():
+            self.observer.stop()
+            self.observer.join()
+
 class WallpaperApp(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -159,7 +226,17 @@ class WallpaperApp(QMainWindow):
         for s in self.screens:
             self.screen_combo.addItem(s["name"], s)
         self.update_texts()
+        
+        # Setup file watcher for auto-refresh
+        self.watcher = LibraryWatcher()
+        self.watcher.library_changed.connect(self.on_library_changed_auto)
+        
         QTimer.singleShot(500, self.restore_last_wallpaper)
+
+    def on_library_changed_auto(self):
+        # Trigger a scan if one isn't already running
+        if self.btn_scan.isEnabled():
+            self.start_scan()
 
     def setup_ui(self):
         main_widget = QWidget()
@@ -476,72 +553,76 @@ class WallpaperApp(QMainWindow):
             self.thread.finished.connect(self.thread.deleteLater)
             self.thread.start()
 
-    def scan_logic(self, manual_dir=None):
+    def get_steam_workshop_dirs(self):
         workshop_dirs = set()
+        base_paths = [
+            os.path.expanduser("~/.local/share/Steam"),
+            os.path.expanduser("~/.steam/steam"),
+            os.path.expanduser("~/.var/app/com.valvesoftware.Steam/.local/share/Steam"),
+            os.path.expanduser("~/.var/app/com.valvesoftware.Steam/.data/Steam"),
+            os.path.expanduser("~/.var/app/com.valvesoftware.Steam/.steam/steam"),
+        ]
+
+        # Library folders from VDF
+        lib_configs = [
+            os.path.expanduser("~/.local/share/Steam/steamapps/libraryfolders.vdf"),
+            os.path.expanduser("~/.steam/steam/steamapps/libraryfolders.vdf"),
+            os.path.expanduser("~/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/libraryfolders.vdf")
+        ]
+        
+        for cfg in lib_configs:
+            if os.path.isfile(cfg):
+                try:
+                    with open(cfg, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        # Simple regex to find paths in VDF
+                        paths = re.findall(r'"path"\s+"([^"]+)"', content)
+                        for p in paths:
+                            if os.path.isdir(p):
+                                base_paths.append(p)
+                except: pass
+        
+        # Deduplicate
+        base_paths = list(set(base_paths))
+        
+        # Add Snap paths
+        base_paths.extend(glob.glob(os.path.expanduser("~/snap/steam/*/.local/share/Steam")))
+        base_paths.extend(glob.glob(os.path.expanduser("~/snap/steam/*/.steam/steam")))
+
+        for base in base_paths:
+            if not os.path.exists(base): continue
+            
+            # Standard workshop path for Wallpaper Engine (ID: 431960)
+            p_workshop = os.path.join(base, "steamapps/workshop/content/431960")
+            if os.path.isdir(p_workshop):
+                workshop_dirs.add(p_workshop)
+            
+            # Default assets
+            p_presets = os.path.join(base, "steamapps/common/wallpaper_engine/assets/presets")
+            if os.path.isdir(p_presets):
+                workshop_dirs.add(p_presets)
+
+        # Fallback deep scan if nothing found
+        if not workshop_dirs:
+            try:
+                # Limit search to home directory to avoid scanning whole system
+                search_roots = [os.path.expanduser("~")]
+                cmd = ["find"] + search_roots + ["-maxdepth", "6", "-type", "d", "-name", "431960"]
+                result = subprocess.run(cmd, capture_output=True, text=True, stderr=subprocess.DEVNULL)
+                if result.returncode == 0:
+                    for line in result.stdout.splitlines():
+                        if os.path.isdir(line):
+                            workshop_dirs.add(line)
+            except Exception as e:
+                print(f"Deep scan error: {e}")
+                
+        return workshop_dirs
+
+    def scan_logic(self, manual_dir=None):
+        workshop_dirs = self.get_steam_workshop_dirs()
         is_append = manual_dir is not None
         if manual_dir:
             workshop_dirs.add(manual_dir)
-        else:
-            base_paths = [
-                os.path.expanduser("~/.local/share/Steam"),
-                os.path.expanduser("~/.steam/steam"),
-                os.path.expanduser("~/.var/app/com.valvesoftware.Steam/.local/share/Steam"),
-                os.path.expanduser("~/.var/app/com.valvesoftware.Steam/.data/Steam"),
-                os.path.expanduser("~/.var/app/com.valvesoftware.Steam/.steam/steam"),
-            ]
-
-                                                                   
-            lib_configs = [
-                os.path.expanduser("~/.local/share/Steam/steamapps/libraryfolders.vdf"),
-                os.path.expanduser("~/.steam/steam/steamapps/libraryfolders.vdf"),
-                os.path.expanduser("~/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/libraryfolders.vdf")
-            ]
-            
-            for cfg in lib_configs:
-                if os.path.isfile(cfg):
-                    try:
-                        with open(cfg, 'r', encoding='utf-8') as f:
-                            content = f.read()
-                                                                            
-                            paths = re.findall(r'"path"\s+"([^"]+)"', content)
-                            for p in paths:
-                                if os.path.isdir(p):
-                                    base_paths.append(p)
-                    except: pass
-            
-                                  
-            base_paths = list(set(base_paths))
-            
-                                
-            base_paths.extend(glob.glob(os.path.expanduser("~/snap/steam/*/.local/share/Steam")))
-            base_paths.extend(glob.glob(os.path.expanduser("~/snap/steam/*/.steam/steam")))
-
-            for base in base_paths:
-                if not os.path.exists(base): continue
-                
-                                                     
-                p_workshop = os.path.join(base, "steamapps/workshop/content/431960")
-                if os.path.isdir(p_workshop):
-                    workshop_dirs.add(p_workshop)
-                
-                                                                         
-                p_presets = os.path.join(base, "steamapps/common/wallpaper_engine/assets/presets")
-                if os.path.isdir(p_presets):
-                    workshop_dirs.add(p_presets)
-
-                                                                       
-            if not workshop_dirs:
-                try:
-                                                                                   
-                    search_roots = [os.path.expanduser("~")]
-                    cmd = ["find"] + search_roots + ["-maxdepth", "6", "-type", "d", "-name", "431960"]
-                    result = subprocess.run(cmd, capture_output=True, text=True, stderr=subprocess.DEVNULL)
-                    if result.returncode == 0:
-                        for line in result.stdout.splitlines():
-                            if os.path.isdir(line):
-                                workshop_dirs.add(line)
-                except Exception as e:
-                    print(f"Deep scan error: {e}")
 
         wallpapers = []
         seen = set()
@@ -580,10 +661,13 @@ class WallpaperApp(QMainWindow):
                         except: pass
             except: pass
             
-        return wallpapers, is_append
+        return wallpapers, is_append, list(workshop_dirs)
 
     def scan_finished(self, result):
-        wallpapers, is_append = result
+        wallpapers, is_append, scanned_dirs = result
+        if hasattr(self, 'watcher'):
+            self.watcher.update_watches(scanned_dirs)
+            
         if not is_append:
             self.list_wallpapers.clear()
         existing_ids = set()
@@ -1000,6 +1084,8 @@ class WallpaperApp(QMainWindow):
 
     def quit_app(self):
         self.stop_wallpapers()
+        if hasattr(self, 'watcher'):
+            self.watcher.stop()
         QApplication.quit()
 
 if __name__ == "__main__":
