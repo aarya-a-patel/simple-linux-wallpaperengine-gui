@@ -31,8 +31,9 @@ pkgs.stdenv.mkDerivation rec {
     wrapProgram $out/bin/simple-wallpaper-engine \
       --prefix PATH : ${lib.makeBinPath propagatedBuildInputs}
     mkdir -p $out/share/applications
-    cp ${desktopItem}/share/applications/*.desktop \
-       $out/share/applications/
+    ${lib.getExe pkgs.envsubst} \
+     < "${desktopItem}/share/applications/simple-wallpaper-engine.desktop" \
+     > "$out/share/applications/simple-wallpaper-engine.desktop"
   '';
 
   desktopItem = pkgs.makeDesktopItem {
