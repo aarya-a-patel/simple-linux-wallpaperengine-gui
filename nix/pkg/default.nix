@@ -3,7 +3,7 @@
   lib,
 }:
 pkgs.stdenv.mkDerivation rec {
-  name = "simple-linux-wallpaperengine-gui";
+  name = "simple-wallpaper-engine";
   src = pkgs.fetchFromGitHub {
     owner = "aarya-a-patel";
     repo = "simple-linux-wallpaperengine-gui";
@@ -11,9 +11,7 @@ pkgs.stdenv.mkDerivation rec {
     sha256 = "sha256-dE0irLqCEngqqH7K0y+0Z3RA+vquzSesOHbX9Xf7f+g=";
   };
 
-  nativeBuildInputs = [
-    pkgs.makeWrapper
-  ];
+  nativeBuildInputs = [pkgs.makeWrapper] ++ lib.optionals pkgs.stdenv.isLinux [pkgs.copyDesktopItems];
 
   propagatedBuildInputs = with pkgs; [
     (python3.withPackages (pythonPackages:
@@ -29,16 +27,31 @@ pkgs.stdenv.mkDerivation rec {
   installPhase = ''
     mkdir -p $out/bin
     cp -r ./locales $out/bin
-    install -Dm755 ./wallpaper_gui.py $out/bin/simple-linux-wallpaperengine-gui
-    wrapProgram $out/bin/simple-linux-wallpaperengine-gui \
+    install -Dm755 ./wallpaper_gui.py $out/bin/simple-wallpaper-engine
+    wrapProgram $out/bin/simple-wallpaper-engine \
       --prefix PATH : ${lib.makeBinPath propagatedBuildInputs}
   '';
+
+  desktopItems = [
+    (pkgs.makeDesktopItem {
+      name = "simple-wallpaper-engine";
+      desktopName = "Simple Wallpaper Engine";
+      comment = "A modern GUI for linux-wallpaperengine";
+      exec = "simple-wallpaper-engine";
+      icon = "preferences-desktop-wallpaper";
+      terminal = false;
+      type = "Application";
+      categories = ["Utility" "Settings" "DesktopSettings" "Qt"];
+      keywords = ["wallpaper" "engine" "background" "steam"];
+      startupNotify = true;
+    })
+  ];
 
   meta = {
     description = "Simple Linux Wallpaper Engine GUI";
     homepage = "https://github.com/Maxnights/simple-linux-wallpaperengine-gui";
-    # license = licenses.gpl3;
+    license = lib.licenses.gpl3;
     platforms = ["x86_64-linux"];
-    mainProgram = "simple-linux-wallpaperengine-gui";
+    mainProgram = "simple-wallpaper-engine";
   };
 }
