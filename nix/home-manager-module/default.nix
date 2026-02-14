@@ -16,15 +16,13 @@ in {
     };
   };
 
-  config = lib.mkIf cfg.enable ({
-      home.packages = [pkg];
-    }
-    // (lib.mkIf cfg.xdgAutostart {
-      xdg.autostart = {
-        enable = true;
-        entries = [
-          "${pkg}/share/applications/simple-wallpaper-engine.desktop"
-        ];
-      };
-    }));
+  config = lib.mkIf cfg.enable {
+    home.packages = [pkg];
+    xdg.autostart = lib.mkIf cfg.xdgAutostart {
+      enable = true;
+      entries = [
+        "${pkg}/share/applications/simple-wallpaper-engine.desktop"
+      ];
+    };
+  };
 }

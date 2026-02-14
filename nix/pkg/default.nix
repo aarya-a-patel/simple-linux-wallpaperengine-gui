@@ -1,17 +1,15 @@
 {
   pkgs ? import <nixpkgs> {system = "x86_64-linux";},
   lib,
+  makeWrapper,
+  makeDesktopItem,
+  copyDesktopItems,
 }:
 pkgs.stdenv.mkDerivation rec {
   name = "simple-wallpaper-engine";
-  src = pkgs.fetchFromGitHub {
-    owner = "aarya-a-patel";
-    repo = "simple-linux-wallpaperengine-gui";
-    rev = "2847dd47a1fe3827f08625165d42d6ddb385d7f6";
-    sha256 = "sha256-dE0irLqCEngqqH7K0y+0Z3RA+vquzSesOHbX9Xf7f+g=";
-  };
+  src = ./../..;
 
-  nativeBuildInputs = [pkgs.makeWrapper] ++ lib.optionals pkgs.stdenv.isLinux [pkgs.copyDesktopItems];
+  nativeBuildInputs = [makeWrapper copyDesktopItems];
 
   propagatedBuildInputs = with pkgs; [
     (python3.withPackages (pythonPackages:
@@ -19,6 +17,7 @@ pkgs.stdenv.mkDerivation rec {
         pyqt6
         pillow
         packaging
+        watchdog
       ]))
     linux-wallpaperengine
     libxcb-cursor
@@ -31,23 +30,8 @@ pkgs.stdenv.mkDerivation rec {
     wrapProgram $out/bin/simple-wallpaper-engine \
       --prefix PATH : ${lib.makeBinPath propagatedBuildInputs}
     mkdir -p $out/share/applications
-    ${lib.getExe pkgs.envsubst} \
-     < "${desktopItem}/share/applications/simple-wallpaper-engine.desktop" \
-     > "$out/share/applications/simple-wallpaper-engine.desktop"
+    install -Dm644 ./simple-wallpaper-engine.desktop $out/share/applications/simple-wallpaper-engine.desktop
   '';
-
-  desktopItem = pkgs.makeDesktopItem {
-    name = "simple-wallpaper-engine";
-    desktopName = "Simple Wallpaper Engine";
-    comment = "A modern GUI for linux-wallpaperengine";
-    exec = "simple-wallpaper-engine";
-    icon = "preferences-desktop-wallpaper";
-    terminal = false;
-    type = "Application";
-    categories = ["Utility" "Settings" "DesktopSettings" "Qt"];
-    keywords = ["wallpaper" "engine" "background" "steam"];
-    startupNotify = true;
-  };
 
   meta = {
     description = "Simple Linux Wallpaper Engine GUI";
@@ -55,5 +39,6 @@ pkgs.stdenv.mkDerivation rec {
     license = lib.licenses.gpl3;
     platforms = ["x86_64-linux"];
     mainProgram = "simple-wallpaper-engine";
+    desktopFileName = "simple-wallpaper-engine.desktop";
   };
 }
