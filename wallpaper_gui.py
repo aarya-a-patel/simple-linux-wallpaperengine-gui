@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import sys
 import os
 import glob
@@ -6,6 +8,8 @@ import subprocess
 import shutil
 import re
 import time
+import pathlib
+import logging
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
@@ -16,8 +20,8 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
 from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal, QObject, QTimer, QRect, QPropertyAnimation, QEasingCurve, QVariant
 from PyQt6.QtGui import QIcon, QPixmap, QImage, QAction, QColor, QPainter
 
-CONFIG_FILE = "wpe_gui_config.json"
-LOCALE_DIR = "locales"
+CONFIG_FILE = pathlib.Path(os.getenv("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))) / "linux-wallpaperengine-gui" / "wpe_gui_config.json"
+LOCALE_DIR = (pathlib.Path(__file__).parent / "locales").absolute()
 
 MACOS_DARK = """
 QMainWindow { background-color: #1E1E1E; }
@@ -96,11 +100,11 @@ class WallpaperDelegate(QStyledItemDelegate):
         self.current_scales = {}
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_animations)
-        self.timer.start(16)           
+        self.timer.start(16)
 
     def update_animations(self):
         changed = False
-        step = 0.02                     
+        step = 0.02
         for index_ptr, target in self.scales.items():
             curr = self.current_scales.get(index_ptr, 1.0)
             if abs(curr - target) > 0.001:
@@ -109,7 +113,7 @@ class WallpaperDelegate(QStyledItemDelegate):
                 else:
                     self.current_scales[index_ptr] = max(curr - step, target)
                 changed = True
-        
+
         if changed and self.parent():
             self.parent().viewport().update()
 
@@ -117,29 +121,29 @@ class WallpaperDelegate(QStyledItemDelegate):
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-        
-                                         
+
+
         idx_id = index.row()
-        
-                                            
+
+
         is_hovered = option.state & QStyle.StateFlag.State_MouseOver
         self.scales[idx_id] = 1.08 if is_hovered else 1.0
-        
-                                    
+
+
         scale = self.current_scales.get(idx_id, 1.0)
-        
+
         if scale > 1.0:
             painter.translate(option.rect.center())
             painter.scale(scale, scale)
             painter.translate(-option.rect.center())
-            
-                                              
+
+
             if is_hovered:
                 shadow_color = QColor(0, 0, 0, 60)
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.setBrush(shadow_color)
                 painter.drawRoundedRect(option.rect.adjusted(2, 2, 2, 2), 12, 12)
-        
+
         super().paint(painter, option, index)
         painter.restore()
 
@@ -233,6 +237,8 @@ class WallpaperApp(QMainWindow):
         
         QTimer.singleShot(500, self.restore_last_wallpaper)
 
+        self.wallpaper_proc = None
+
     def on_library_changed_auto(self):
         # Trigger a scan if one isn't already running
         if self.btn_scan.isEnabled():
@@ -244,7 +250,7 @@ class WallpaperApp(QMainWindow):
         main_layout = QVBoxLayout(main_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
-        
+
         self.nav_container = QFrame()
         self.nav_container.setObjectName("NavContainer")
         self.nav_container.setFixedHeight(50)
@@ -255,18 +261,18 @@ class WallpaperApp(QMainWindow):
         self.nav_bar = QListWidget()
         self.nav_bar.setObjectName("Sidebar")
         self.nav_bar.setFlow(QListWidget.Flow.LeftToRight)
-        self.nav_bar.setFixedWidth(260)                             
+        self.nav_bar.setFixedWidth(260)
         self.nav_bar.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.nav_bar.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.nav_bar.addItems(["Control", "Library"])
         self.nav_bar.currentRowChanged.connect(self.switch_page)
-        
+
         nav_layout.addStretch()
         nav_layout.addWidget(self.nav_bar)
         nav_layout.addStretch()
-        
+
         main_layout.addWidget(self.nav_container)
-        
+
         self.stack = QStackedWidget()
         main_layout.addWidget(self.stack)
         self.page_control = QWidget()
@@ -338,15 +344,15 @@ class WallpaperApp(QMainWindow):
         self.chk_windowed_mode.clicked.connect(self.run_wallpaper)
         self.input_custom_args = QLineEdit()
         self.input_custom_args.setPlaceholderText("--window 0x0x1280x720")
-        
+
         self.combo_lang = QComboBox()
         self.combo_lang.currentTextChanged.connect(self.change_lang)
-        
+
         self.add_form_row(card_adv, "language_label", self.combo_lang)
         self.add_form_row(card_adv, "scaling_label", self.combo_scaling)
         self.add_form_row(card_adv, "clamp_label", self.combo_clamp)
         card_adv.layout().addWidget(self.chk_windowed_mode)
-        
+
         self.lbl_kwin_hint = QLabel("kwin_hint")
         self.lbl_kwin_hint.setWordWrap(True)
         self.lbl_kwin_hint.setStyleSheet("color: #888; font-size: 11px; margin-left: 24px; margin-bottom: 8px;")
@@ -484,7 +490,7 @@ class WallpaperApp(QMainWindow):
         items = ["control_tab", "local_library_tab"]
         for i, key in enumerate(items):
             self.nav_bar.item(i).setText(self._(key))
-        
+
         for widget, key in self.translatable_labels:
             widget.setText(self._(key))
 
@@ -614,7 +620,7 @@ class WallpaperApp(QMainWindow):
                         if os.path.isdir(line):
                             workshop_dirs.add(line)
             except Exception as e:
-                print(f"Deep scan error: {e}")
+                logging.error(f"Deep scan error: {e}")
                 
         return workshop_dirs
 
@@ -626,7 +632,7 @@ class WallpaperApp(QMainWindow):
 
         wallpapers = []
         seen = set()
-        
+
         for w_dir in workshop_dirs:
             try:
                 proj_self = os.path.join(w_dir, "project.json")
@@ -637,7 +643,7 @@ class WallpaperApp(QMainWindow):
                             item_id = os.path.basename(w_dir)
                             wallpapers.append({
                                 "title": data.get("title", "Untitled"),
-                                "id": item_id, 
+                                "id": item_id,
                                 "path": w_dir,
                                 "preview": data.get("preview")
                             })
@@ -653,7 +659,7 @@ class WallpaperApp(QMainWindow):
                                 data = json.load(f)
                                 wallpapers.append({
                                     "title": data.get("title", "Untitled"),
-                                    "id": item_id, 
+                                    "id": item_id,
                                     "path": path,
                                     "preview": data.get("preview")
                                 })
@@ -680,22 +686,22 @@ class WallpaperApp(QMainWindow):
             if w["id"] in existing_ids: continue
             item = QListWidgetItem(w["title"])
             item.setData(Qt.ItemDataRole.UserRole, w)
-            
-                                  
+
+
             if w.get("preview"):
                 path = os.path.join(w["path"], w["preview"])
                 if os.path.isfile(path):
                     pixmap = QPixmap(path)
-                                                        
+
                     icon_pixmap = pixmap.scaled(200, 140, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)
-                    
-                                        
+
+
                     rect = QRect(0, 0, 200, 140)
                     rect.moveCenter(icon_pixmap.rect().center())
                     icon_pixmap = icon_pixmap.copy(rect)
-                    
+
                     item.setIcon(QIcon(icon_pixmap))
-            
+
             self.list_wallpapers.addItem(item)
             existing_ids.add(w["id"])
             new_count += 1
@@ -923,15 +929,15 @@ class WallpaperApp(QMainWindow):
     def run_wallpaper(self):
         if not shutil.which("linux-wallpaperengine"):
             from PyQt6.QtWidgets import QMessageBox
-            QMessageBox.critical(self, "Error", 
+            QMessageBox.critical(self, "Error",
                 "The backend 'linux-wallpaperengine' was not found in your PATH.\n\n"
                 "Please install it first. See README.md for instructions.")
             self.status_bar.showMessage("Error: linux-wallpaperengine not found")
             return
-        
+
         cmd = ['linux-wallpaperengine']
         screen_name = self.screen_combo.currentText()
-        
+
         if self.chk_windowed_mode.isChecked():
             geom = "0x0x1920x1080"
             found = next((s for s in self.screens if s["name"] == screen_name), None)
@@ -940,7 +946,7 @@ class WallpaperApp(QMainWindow):
             cmd.extend(['--window', geom])
         else:
             cmd.extend(['--screen-root', screen_name])
-            
+
         cmd.extend(['--bg', self.wp_id_input.text()])
         if self.chk_silent.isChecked(): cmd.append('--silent')
         elif self.slider_volume.value() != 15: cmd.extend(['--volume', str(self.slider_volume.value())])
@@ -964,18 +970,36 @@ class WallpaperApp(QMainWindow):
              for arg in custom_args.split(): cmd.append(arg)
         self.stop_wallpapers()
         try:
-            subprocess.Popen(cmd)
+            self.wallpaper_proc = subprocess.Popen(cmd)
             self.status_bar.showMessage(self._("status_command_launched"))
             self.save_config()
         except Exception as e:
+            logging.error("Couldn't run with error %s", e)
             self.status_bar.showMessage(f"Error: {e}")
 
     def stop_wallpapers(self):
-        try:
-            subprocess.run(['pkill', '-f', 'linux-wallpaperengine'], stderr=subprocess.DEVNULL)
+        stopped_internal = False
+        if self.wallpaper_proc is not None:
+            try:
+                self.wallpaper_proc.terminate()
+                self.wallpaper_proc.wait(timeout=1)
+                stopped_internal = True
+            except Exception as e:
+                logging.error("Couldn't stop internal wallpaper process: %s", e)
+        
+        # Fallback: If we didn't stop a child process (e.g. GUI restarted), 
+        # ensure we clean up any orphaned linux-wallpaperengine processes.
+        # This restores the "force stop" capability users expect.
+        if not stopped_internal:
+            try:
+                subprocess.run(["pkill", "-f", "linux-wallpaperengine"], check=False)
+                self.status_bar.showMessage(self._("status_all_stopped"))
+            except Exception as e:
+                logging.error(f"Fallback pkill failed: {e}")
+        else:
             self.status_bar.showMessage(self._("status_all_stopped"))
-        except Exception as e:
-            self.status_bar.showMessage(f"Error stopping: {e}")
+            
+        self.wallpaper_proc = None
 
     def restore_last_wallpaper(self):
         c = self.config.get("last_wallpaper", {})
@@ -992,10 +1016,10 @@ class WallpaperApp(QMainWindow):
         screens = []
         try:
             res = subprocess.run(['xrandr', '--query'], capture_output=True, text=True)
-                                                                  
-                                                                           
+
+
             pattern = re.compile(r'^(\S+)\s+connected\s+(?:primary\s+)?(\d+)x(\d+)\+(\d+)\+(\d+)')
-            
+
             for line in res.stdout.splitlines():
                 match = pattern.match(line)
                 if match:
@@ -1005,22 +1029,40 @@ class WallpaperApp(QMainWindow):
                         "w": w, "h": h, "x": x, "y": y
                     })
         except Exception as e:
-            print(f"Screen detection error: {e}")
-            
+            logging.error(f"Screen detection error: {e}")
+
         if not screens:
             screens = [{"name": "eDP-1", "w": "1920", "h": "1080", "x": "0", "y": "0"}]
-            
+
         return screens
 
     def load_config_data(self):
         self.config = {}
+        
+        # Ensure config directory exists
+        try:
+            CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logging.error(f"Failed to create config directory: {e}")
+
+        # Migration: Check for old config in current working directory
+        old_config_path = pathlib.Path(__file__).parent / "wpe_gui_config.json"
+        if old_config_path.exists() and not CONFIG_FILE.exists():
+            logging.info(f"Migrating config from {old_config_path} to {CONFIG_FILE}")
+            try:
+                shutil.move(str(old_config_path), str(CONFIG_FILE))
+            except Exception as e:
+                logging.error(f"Migration failed: {e}")
+
         if os.path.exists(CONFIG_FILE):
+            logging.info("Attempting to read config from: %s", CONFIG_FILE)
             try:
                 with open(CONFIG_FILE, 'r') as f: self.config = json.load(f)
-            except: pass
+            except Exception as e:
+                logging.info("Failed to open config with error %s", e)
         if "properties_by_wallpaper" not in self.config:
             self.config["properties_by_wallpaper"] = {}
-    
+
     def apply_config_ui(self):
         pass
 
@@ -1048,7 +1090,11 @@ class WallpaperApp(QMainWindow):
                     "type": data.get("type", ""),
                 }
             self.config.setdefault("properties_by_wallpaper", {})[wallpaper_id] = props_out
-        with open(CONFIG_FILE, 'w') as f: json.dump(self.config, f, indent=4)
+        try:
+            CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+            with open(CONFIG_FILE, 'w') as f: json.dump(self.config, f, indent=4)
+        except Exception as e:
+            logging.error("Couldn't save config with error %s", e)
 
     def setup_tray(self):
         self.tray = QSystemTrayIcon(QApplication.instance())
@@ -1063,7 +1109,7 @@ class WallpaperApp(QMainWindow):
         painter.drawEllipse(0, 0, 64, 64)
         painter.end()
         self.tray.setIcon(QIcon(QPixmap.fromImage(img)))
-        
+
         self.tray_menu = QMenu()
         a_show = QAction(self._("show_window_tray_menu"), self)
         a_show.triggered.connect(self.show)
@@ -1071,7 +1117,7 @@ class WallpaperApp(QMainWindow):
         a_exit.triggered.connect(self.quit_app)
         self.tray_menu.addAction(a_show)
         self.tray_menu.addAction(a_exit)
-        
+
         self.tray.setContextMenu(self.tray_menu)
         self.tray.show()
 
@@ -1089,6 +1135,7 @@ class WallpaperApp(QMainWindow):
         QApplication.quit()
 
 if __name__ == "__main__":
+    logging.basicConfig(format='[%(asctime)s] [%(levelname)s]:  %(message)s')
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     app.setStyle("Fusion")
