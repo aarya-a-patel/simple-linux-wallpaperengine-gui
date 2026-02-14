@@ -19,6 +19,42 @@ The easiest way is to install via AUR. This will automatically install the backe
 yay -S simple-linux-wallpaperengine-gui-git
 ```
 
+## Installation (Nix)
+
+Flake Install (Recommended)
+
+Add to your flake inputs,
+```nix
+inputs = {
+  simple-wallpaper-engine = {
+    url = "github:Maxnights/simple-linux-wallpaperengine-gui";
+    inputs = {
+      nixpkgs.follows = "nixpkgs";
+      home-manager.follows = "home-manager";
+    };
+  };
+  # ...
+}
+
+```
+
+Then in your home manager config, import the home manager module and enable the program.
+```nix
+{inputs, ...}: {
+  imports = [inputs.simple-wallpaper-engine.homeManagerModules.default];
+  # ...
+  programs.simple-wallpaper-engine.enable = true;
+}
+
+```
+
+Imperative Install
+
+```bash
+nix profile install github:Maxnights/simple-linux-wallpaperengine-gui
+```
+
+
 ## 1. Prerequisites (The Backend)
 This is just a GUI. You **must** install the core backend engine first. If you installed my GUI from AUR, then the main backend engine from Almamu(https://github.com/Almamu/linux-wallpaperengine) comes as a dependency. So you can skip this step.
 
@@ -66,10 +102,10 @@ Start the application:
 
 ## Troubleshooting
 
-**"linux-wallpaperengine not found"**  
+**"linux-wallpaperengine not found"**
 Ensure you completed Step 1. Run `linux-wallpaperengine --help` in a terminal to verify it's installed globally.
 
-**Wallpapers not showing?**  
+**Wallpapers not showing?**
 Go to the **Library** tab and click **Scan Local Wallpapers**. The app searches standard paths including `~/.local/share/Steam`, `~/.var/app/com.valvesoftware.Steam`, and `~/snap/steam`.
 
 
