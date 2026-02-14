@@ -21,7 +21,7 @@ in {
     xdg.autostart = lib.mkIf cfg.xdgAutostart {
       enable = true;
       entries = [
-        "${pkg}/share/applications/simple-wallpaper-engine.desktop"
+        "${pkg}/share/applications/simple-wallpaper-engine-autostart.desktop"
       ];
     };
   };

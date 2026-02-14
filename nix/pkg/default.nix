@@ -2,7 +2,6 @@
   pkgs ? import <nixpkgs> {system = "x86_64-linux";},
   lib,
   makeWrapper,
-  makeDesktopItem,
   copyDesktopItems,
 }:
 pkgs.stdenv.mkDerivation rec {
@@ -31,6 +30,7 @@ pkgs.stdenv.mkDerivation rec {
       --prefix PATH : ${lib.makeBinPath propagatedBuildInputs}
     mkdir -p $out/share/applications
     install -Dm644 ./simple-wallpaper-engine.desktop $out/share/applications/simple-wallpaper-engine.desktop
+    install -Dm644 ./simple-wallpaper-engine-autostart.desktop $out/share/applications/simple-wallpaper-engine-autostart.desktop
   '';
 
   meta = {
