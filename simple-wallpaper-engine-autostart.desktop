@@ -1,10 +1,12 @@
 [Desktop Entry]
-Name=Simple Wallpaper Engine
+Name=Simple Wallpaper Engine (Autostart)
 Comment=A modern GUI for linux-wallpaperengine
-Exec=/usr/bin/env simple-wallpaper-engine
+Exec=/usr/bin/env simple-wallpaper-engine --background
 Icon=preferences-desktop-wallpaper
 Terminal=false
 Type=Application
 Categories=Utility;Settings;DesktopSettings;Qt;
 Keywords=wallpaper;engine;background;steam;
 StartupNotify=true
+NoDisplay=true
+
