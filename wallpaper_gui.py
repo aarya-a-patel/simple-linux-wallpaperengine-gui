@@ -10,11 +10,13 @@ import re
 import time
 import pathlib
 import logging
+import argparse
+
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-                             QPushButton, QLabel, QLineEdit, QCheckBox, QSlider, QComboBox, 
-                             QStackedWidget, QListWidget, QListWidgetItem, QSystemTrayIcon, 
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+                             QPushButton, QLabel, QLineEdit, QCheckBox, QSlider, QComboBox,
+                             QStackedWidget, QListWidget, QListWidgetItem, QSystemTrayIcon,
                              QMenu, QFrame, QSizePolicy, QGraphicsDropShadowEffect,
                              QStyledItemDelegate, QStyle, QFileDialog)
 from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal, QObject, QTimer, QRect, QPropertyAnimation, QEasingCurve, QVariant
@@ -168,13 +170,13 @@ class LibraryWatcher(QObject):
         self.observer = Observer()
         self.handler = WallpaperChangeHandler(self._raw_change)
         self.watched_paths = set()
-        
+
         # Debounce timer
         self.timer = QTimer()
         self.timer.setSingleShot(True)
         self.timer.setInterval(2000)  # Wait 2 seconds after last event
         self.timer.timeout.connect(self.library_changed.emit)
-        
+
         self._raw_change.connect(self.on_raw_change)
 
     def on_raw_change(self):
@@ -190,17 +192,17 @@ class LibraryWatcher(QObject):
         if self.observer.is_alive():
             self.observer.stop()
             self.observer.join()
-        
+
         self.observer = Observer()
         self.watched_paths = new_paths
-        
+
         for d in directories:
             if os.path.isdir(d):
                 try:
                     self.observer.schedule(self.handler, d, recursive=True)
                 except Exception as e:
                     print(f"Failed to watch {d}: {e}")
-        
+
         try:
             self.observer.start()
         except Exception as e:
@@ -230,11 +232,11 @@ class WallpaperApp(QMainWindow):
         for s in self.screens:
             self.screen_combo.addItem(s["name"], s)
         self.update_texts()
-        
+
         # Setup file watcher for auto-refresh
         self.watcher = LibraryWatcher()
         self.watcher.library_changed.connect(self.on_library_changed_auto)
-        
+
         QTimer.singleShot(500, self.restore_last_wallpaper)
 
         self.wallpaper_proc = None
@@ -579,7 +581,7 @@ class WallpaperApp(QMainWindow):
             os.path.expanduser("~/.steam/steam/steamapps/libraryfolders.vdf"),
             os.path.expanduser("~/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/libraryfolders.vdf")
         ]
-        
+
         for cfg in lib_configs:
             if os.path.isfile(cfg):
                 try:
@@ -591,22 +593,22 @@ class WallpaperApp(QMainWindow):
                             if os.path.isdir(p):
                                 base_paths.append(p)
                 except: pass
-        
+
         # Deduplicate
         base_paths = list(set(base_paths))
-        
+
         # Add Snap paths
         base_paths.extend(glob.glob(os.path.expanduser("~/snap/steam/*/.local/share/Steam")))
         base_paths.extend(glob.glob(os.path.expanduser("~/snap/steam/*/.steam/steam")))
 
         for base in base_paths:
             if not os.path.exists(base): continue
-            
+
             # Standard workshop path for Wallpaper Engine (ID: 431960)
             p_workshop = os.path.join(base, "steamapps/workshop/content/431960")
             if os.path.isdir(p_workshop):
                 workshop_dirs.add(p_workshop)
-            
+
             # Default assets
             p_presets = os.path.join(base, "steamapps/common/wallpaper_engine/assets/presets")
             if os.path.isdir(p_presets):
@@ -625,7 +627,7 @@ class WallpaperApp(QMainWindow):
                             workshop_dirs.add(line)
             except Exception as e:
                 logging.error(f"Deep scan error: {e}")
-                
+
         return workshop_dirs
 
     def scan_logic(self, manual_dir=None):
@@ -670,14 +672,14 @@ class WallpaperApp(QMainWindow):
                                 seen.add(item_id)
                         except: pass
             except: pass
-            
+
         return wallpapers, is_append, list(workshop_dirs)
 
     def scan_finished(self, result):
         wallpapers, is_append, scanned_dirs = result
         if hasattr(self, 'watcher'):
             self.watcher.update_watches(scanned_dirs)
-            
+
         if not is_append:
             self.list_wallpapers.clear()
         existing_ids = set()
@@ -1011,8 +1013,8 @@ class WallpaperApp(QMainWindow):
                 stopped_internal = True
             except Exception as e:
                 logging.error("Couldn't stop internal wallpaper process: %s", e)
-        
-        # Fallback: If we didn't stop a child process (e.g. GUI restarted), 
+
+        # Fallback: If we didn't stop a child process (e.g. GUI restarted),
         # ensure we clean up any orphaned linux-wallpaperengine processes.
         # This restores the "force stop" capability users expect.
         if not stopped_internal:
@@ -1020,7 +1022,7 @@ class WallpaperApp(QMainWindow):
             self.status_bar.showMessage(self._("status_all_stopped"))
         else:
             self.status_bar.showMessage(self._("status_all_stopped"))
-            
+
         self.wallpaper_proc = None
 
     def restore_last_wallpaper(self):
@@ -1060,7 +1062,7 @@ class WallpaperApp(QMainWindow):
 
     def load_config_data(self):
         self.config = {}
-        
+
         # Ensure config directory exists
         try:
             CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -1155,10 +1157,10 @@ class WallpaperApp(QMainWindow):
         self.stop_wallpapers()
         if hasattr(self, 'watcher'):
             self.watcher.stop()
-        
+
         # Force kill any remaining backend processes to ensure clean exit
         self.kill_external_wallpapers()
-            
+
         QApplication.quit()
 
 if __name__ == "__main__":
@@ -1167,8 +1169,9 @@ if __name__ == "__main__":
     app.setQuitOnLastWindowClosed(False)
     app.setStyle("Fusion")
     window = WallpaperApp()
-    for a in sys.argv:
-        print(a)
-    if "--background" not in sys.argv:
+    parser = argparse.ArgumentParser(description="A simple gui for linux-wallpaperengine")
+    parser.add_argument("--background", action="store_true", help="Start the GUI minimized to the tray")
+    args = parser.parse_args()
+    if not args.background:
         window.show()
     sys.exit(app.exec())
